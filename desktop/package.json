@@ -1,0 +1,53 @@
+{
+  "name": "comicstream",
+  "productName": "ComicStream",
+  "version": "1.0.0",
+  "description": "Leitor de HQs, mangás e PDFs",
+  "author": "Leandro",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "7zip-bin": "5.2.0"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.comicstream.app",
+    "productName": "ComicStream",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "build/icon.png"
+    ],
+    "extraResources": [
+      { "from": "../public", "to": "app/public" },
+      { "from": "../server", "to": "app/server" },
+      { "from": "php", "to": "php" },
+      { "from": "node_modules/7zip-bin/win/x64/7za.exe", "to": "bin/7za.exe" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ComicStream",
+      "artifactName": "ComicStream-Setup-${version}.exe"
+    }
+  }
+}

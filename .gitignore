@@ -1,0 +1,10 @@
+storage/
+uploads/
+backend/
+frontend/
+.vscode/
+node_modules/
+desktop/dist/
+desktop/php/
+mobile/www/
+mobile/android/app/src/main/assets/public/

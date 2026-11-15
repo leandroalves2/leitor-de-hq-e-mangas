@@ -1,0 +1,20 @@
+{
+  "name": "comicstream-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build-www.mjs",
+    "sync": "node build-www.mjs && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.4.4",
+    "@capacitor/core": "7.4.4",
+    "@capacitor/filesystem": "7.1.9",
+    "jszip": "3.10.1",
+    "libarchive.js": "2.0.2",
+    "@capacitor/app": "7.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.4.4"
+  }
+}

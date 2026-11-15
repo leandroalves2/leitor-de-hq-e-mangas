@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffd60a">
+<title>ComicStream</title>
+<link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/img/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preload" href="assets/fonts/bangers-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/app.css">
+<script>try{var t=JSON.parse(localStorage.getItem('cs.theme'));if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v6h-6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-skip-prev" viewBox="0 0 24 24"><path d="M6 5v14M18 5l-9 7 9 7z"/></symbol>
+  <symbol id="i-skip-next" viewBox="0 0 24 24"><path d="M18 5v14M6 5l9 7-9 7z"/></symbol>
+  <symbol id="i-page" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7 4.5 3 4.5v14c4 0 7 .5 9 2 2-1.5 5-2 9-2v-14c-4 0-7 .5-9 2zM12 6.5v14"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="8" rx="1"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-compress" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-fit-w" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
+  <symbol id="i-fit-h" viewBox="0 0 24 24"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 9.5V20h14V9.5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4M12 14v4M8 21h8M9 18h6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 11h9M12 4v16M12 14h9"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-9 6 6 0 0 1 11.6 1.5A3.75 3.75 0 0 1 17.5 18zM12 10v6M9.5 13.5L12 16l2.5-2.5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-files" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/></symbol>
+</svg>
+
+<header class="topbar">
+  <a class="logo" href="#/" aria-label="ComicStream, voltar à estante">
+    <img src="assets/img/icon.svg" alt="" width="44" height="44">
+    <span class="logo-text">Comic<b>Stream</b></span>
+  </a>
+  <label class="search">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input id="search" type="search" placeholder="Buscar HQs, pastas, capítulos..." autocomplete="off" spellcheck="false">
+    <kbd>/</kbd>
+  </label>
+  <div class="top-actions">
+    <div class="menu-wrap">
+      <button class="btn btn-yellow" id="btn-upload" aria-haspopup="menu" aria-expanded="false"><svg class="ic"><use href="#i-upload"/></svg><span>Enviar</span></button>
+      <div class="menu" id="upload-menu" role="menu" hidden>
+        <button role="menuitem" data-pick="files"><svg class="ic"><use href="#i-files"/></svg>Arquivos</button>
+        <button role="menuitem" data-pick="folder"><svg class="ic"><use href="#i-folder"/></svg>Pasta inteira</button>
+        <p>ou arraste para a janela</p>
+      </div>
+    </div>
+    <button class="btn btn-blue" id="btn-drive" title="Baixar do Google Drive"><svg class="ic"><use href="#i-cloud"/></svg><span>Drive</span><b class="badge-count" id="drive-badge" hidden>0</b></button>
+    <button class="btn icon btn-pink" id="btn-install" title="Instalar como app" hidden><svg class="ic"><use href="#i-download"/></svg></button>
+    <a class="btn icon" id="btn-stats" href="#/stats" title="Estatísticas e conquistas"><svg class="ic"><use href="#i-trophy"/></svg></a>
+    <button class="btn icon" id="btn-refresh" title="Atualizar estante"><svg class="ic"><use href="#i-refresh"/></svg></button>
+    <button class="btn icon" id="btn-settings" title="Configurações"><svg class="ic"><use href="#i-gear"/></svg></button>
+    <button class="btn icon" id="btn-theme" title="Alternar tema"><svg class="ic"><use href="#i-moon"/></svg></button>
+  </div>
+  <input type="file" id="pick-files" multiple hidden accept=".pdf,.cbz,.cbr,.cb7,.zip,.rar,.7z,image/*">
+  <input type="file" id="pick-folder" multiple webkitdirectory hidden>
+</header>
+
+<main class="library" id="library">
+  <section class="shelf" id="continue" hidden>
+    <h2 class="caption caption-red">Continue lendo</h2>
+    <div class="shelf-row" id="continue-row"></div>
+  </section>
+  <section class="shelf" id="favorites" hidden>
+    <div class="shelf-head"><h2 class="caption caption-pink">Favoritos</h2><a class="more" href="#/fav">Ver todos ›</a></div>
+    <div class="shelf-row" id="favorites-row"></div>
+  </section>
+  <section class="shelf" id="collections" hidden>
+    <div class="shelf-head"><h2 class="caption caption-blue">Coleções</h2></div>
+    <div class="shelf-row" id="collections-row"></div>
+  </section>
+  <section class="browser">
+    <div class="browser-head">
+      <nav class="crumbs" id="crumbs" aria-label="Caminho"></nav>
+      <div class="browser-tools">
+        <span class="stats" id="stats"></span>
+        <div class="segmented" id="filter" role="group" aria-label="Filtrar">
+          <button data-filter="all">Todos</button>
+          <button data-filter="unread">Não lidos</button>
+          <button data-filter="reading">Lendo</button>
+          <button data-filter="done">Lidos</button>
+        </div>
+        <div class="segmented" id="sort" role="group" aria-label="Ordenar">
+          <button data-sort="name">A-Z</button>
+          <button data-sort="recent">Recentes</button>
+          <button data-sort="size">Tamanho</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+</main>
+
+<main class="library stats-view" id="stats-view" hidden></main>
+
+<div class="menu collect-menu" id="collect-menu" hidden></div>
+<div class="drag-dock" id="drag-dock" hidden></div>
+
+<div class="sheet" id="drive-modal" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head"><h3 class="caption caption-blue">Google Drive</h3><button class="btn icon sm" data-close title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="segmented" id="drive-tabs">
+      <button data-tab="public">Link público</button>
+      <button data-tab="account" id="drive-tab-account">Minha conta</button>
+    </div>
+    <div id="drive-public">
+      <p class="hint-lg">Cole o link de um <b>arquivo</b> ou de uma <b>pasta</b> compartilhada como "qualquer pessoa com o link". Tudo vai para a pasta <b>Downloads</b> da estante.</p>
+      <form class="drive-form" id="drive-public-form">
+        <input id="drive-link" type="url" placeholder="https://drive.google.com/drive/folders/..." autocomplete="off" required>
+        <button class="btn btn-yellow" type="submit"><svg class="ic"><use href="#i-download"/></svg><span>Baixar</span></button>
+      </form>
+    </div>
+    <div id="drive-account" hidden></div>
+    <div class="drive-jobs" id="drive-jobs"></div>
+  </div>
+</div>
+
+<div class="sheet" id="settings-modal" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head"><h3 class="caption">Configurações</h3><button class="btn icon sm" data-close title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div id="settings-body"></div>
+  </div>
+</div>
+
+<div class="reader" id="reader" hidden>
+  <div class="r-stage" id="r-stage" tabindex="-1"></div>
+  <button class="r-edge r-edge-l" id="r-edge-l" title="Virar para a esquerda"><svg class="ic"><use href="#i-left"/></svg></button>
+  <button class="r-edge r-edge-r" id="r-edge-r" title="Virar para a direita"><svg class="ic"><use href="#i-right"/></svg></button>
+  <div class="r-spot" id="r-spot" hidden></div>
+  <div class="r-chip" id="r-chip" hidden></div>
+
+  <header class="r-bar r-top">
+    <button class="r-btn" id="r-close" title="Voltar à estante (Esc)"><svg class="ic"><use href="#i-back"/></svg></button>
+    <div class="r-title"><strong id="r-title"></strong><small id="r-sub"></small></div>
+    <div class="r-tools">
+      <div class="segmented dark" id="r-modes" role="group" aria-label="Modo de leitura">
+        <button data-mode="single" title="Página a página (1)"><svg class="ic"><use href="#i-page"/></svg><span>Página</span></button>
+        <button data-mode="book" title="Livro (2)"><svg class="ic"><use href="#i-book"/></svg><span>Livro</span></button>
+        <button data-mode="scroll" title="Rolagem infinita (3)"><svg class="ic"><use href="#i-scroll"/></svg><span>Scroll</span></button>
+      </div>
+      <div class="r-group" id="r-zoomgrp">
+        <button class="r-btn" id="r-zoom-out" title="Diminuir zoom (-)"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <button class="r-zoom" id="r-zoom" title="Zoom normal (0)">100%</button>
+        <button class="r-btn" id="r-zoom-in" title="Aumentar zoom (+)"><svg class="ic"><use href="#i-plus"/></svg></button>
+      </div>
+      <button class="r-btn" id="r-guided" title="Leitura quadro a quadro (G)"><svg class="ic"><use href="#i-frame"/></svg></button>
+      <div class="r-pop-wrap">
+        <button class="r-btn" id="r-adjust" title="Ajustes de imagem (I)"><svg class="ic"><use href="#i-sliders"/></svg></button>
+        <div class="r-pop" id="r-adjust-pop" hidden>
+          <h4 class="caption">Ajustes</h4>
+          <div class="presets">
+            <button data-preset="normal">Normal</button>
+            <button data-preset="night">Noite</button>
+            <button data-preset="paper">Papel limpo</button>
+            <button data-preset="punch">Cores vivas</button>
+          </div>
+          <label>Brilho <output data-out="brightness"></output><input type="range" min="50" max="150" data-adj="brightness"></label>
+          <label>Contraste <output data-out="contrast"></output><input type="range" min="50" max="160" data-adj="contrast"></label>
+          <label>Saturação <output data-out="saturate"></output><input type="range" min="0" max="180" data-adj="saturate"></label>
+          <label>Sépia <output data-out="sepia"></output><input type="range" min="0" max="100" data-adj="sepia"></label>
+          <label class="toggle"><input type="checkbox" data-adj="crop"> Cortar margens brancas <small>(modo Página)</small></label>
+        </div>
+      </div>
+      <button class="r-btn" id="r-fit" title="Ajuste (W)"><svg class="ic"><use href="#i-fit-h"/></svg></button>
+      <button class="r-btn r-dir" id="r-dir" title="Direção de leitura (M)"></button>
+      <button class="r-btn hide-sm" id="r-fav" title="Favoritar (S)"><svg class="ic"><use href="#i-star"/></svg></button>
+      <button class="r-btn" id="r-chapters" title="Capítulos (C)"><svg class="ic"><use href="#i-list"/></svg></button>
+      <button class="r-btn hide-sm" id="r-full" title="Tela cheia (F)"><svg class="ic"><use href="#i-expand"/></svg></button>
+      <button class="r-btn hide-sm" id="r-help" title="Atalhos (?)"><svg class="ic"><use href="#i-help"/></svg></button>
+    </div>
+  </header>
+
+  <footer class="r-bar r-bottom">
+    <button class="r-btn" id="r-chap-prev" title="Capítulo anterior (P)"><svg class="ic"><use href="#i-skip-prev"/></svg></button>
+    <button class="r-btn" id="r-left" title="Virar para a esquerda (←)"><svg class="ic"><use href="#i-left"/></svg></button>
+    <div class="r-slider">
+      <input type="range" id="r-slider" min="1" max="1" value="1" aria-label="Página">
+      <output class="bubble" id="r-bubble" hidden></output>
+    </div>
+    <button class="r-btn" id="r-right" title="Virar para a direita (→)"><svg class="ic"><use href="#i-right"/></svg></button>
+    <button class="r-btn" id="r-chap-next" title="Próximo capítulo (N)"><svg class="ic"><use href="#i-skip-next"/></svg></button>
+    <span class="r-counter" id="r-counter">1 / 1</span>
+  </footer>
+
+  <aside class="r-drawer" id="r-drawer" aria-label="Capítulos">
+    <div class="drawer-head"><h3 class="caption">Capítulos</h3><button class="r-btn" id="r-drawer-close" title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="drawer-list" id="r-chapter-list"></div>
+  </aside>
+
+  <div class="r-loading" id="r-loading" hidden>
+    <div class="burst-wrap"><div class="burst">Carregando!</div></div>
+    <div class="load-bar"><i id="r-load-bar"></i></div>
+  </div>
+
+  <div class="r-end" id="r-end" hidden>
+    <div class="end-card">
+      <div class="burst-wrap"><div class="burst burst-red">Fim!</div></div>
+      <p id="r-end-text"></p>
+      <div class="end-actions">
+        <button class="btn btn-yellow" id="r-end-next"><svg class="ic"><use href="#i-skip-next"/></svg><span>Próximo capítulo</span></button>
+        <button class="btn" id="r-end-back"><svg class="ic"><use href="#i-home"/></svg><span>Voltar à estante</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="r-help-modal" hidden>
+    <div class="modal-card">
+      <div class="drawer-head"><h3 class="caption">Atalhos</h3><button class="r-btn" data-close title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+      <dl class="keys">
+        <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Virar página</dd>
+        <dt><kbd>Espaço</kbd></dt><dd>Próxima página</dd>
+        <dt><kbd>Home</kbd><kbd>End</kbd></dt><dd>Primeira / última página</dd>
+        <dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dt><dd>Página · Livro · Scroll</dd>
+        <dt><kbd>+</kbd><kbd>-</kbd><kbd>0</kbd></dt><dd>Zoom (no Livro: rodinha do mouse; nos outros: Ctrl + rodinha)</dd>
+        <dt><kbd>W</kbd></dt><dd>Ajustar à largura / à tela</dd>
+        <dt><kbd>M</kbd></dt><dd>Direção HQ ↔ Mangá</dd>
+        <dt><kbd>N</kbd><kbd>P</kbd></dt><dd>Próximo / anterior capítulo</dd>
+        <dt><kbd>C</kbd></dt><dd>Lista de capítulos</dd>
+        <dt><kbd>G</kbd></dt><dd>Leitura quadro a quadro</dd>
+        <dt><kbd>I</kbd></dt><dd>Ajustes de imagem</dd>
+        <dt><kbd>S</kbd></dt><dd>Favoritar</dd>
+        <dt><kbd>F</kbd></dt><dd>Tela cheia</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Voltar à estante</dd>
+      </dl>
+      <p class="hint">No celular: toque nas laterais ou deslize para virar a página. Toque no centro para mostrar ou esconder os controles. Com zoom, arraste a página para ler e use as setas amarelas nas bordas para virar.</p>
+    </div>
+  </div>
+</div>
+
+<div class="drop" id="drop" hidden><div class="burst-wrap"><div class="burst">Solta aqui!</div></div></div>
+
+<div class="upload-panel" id="upload-panel" hidden>
+  <div class="up-head"><strong id="up-title">Enviando...</strong><button class="btn icon sm" id="up-cancel" title="Cancelar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <small id="up-file"></small>
+  <div class="load-bar"><i id="up-bar"></i></div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="boot-warn" id="boot-warn" hidden>
+  <div class="end-card">
+    <div class="burst-wrap"><div class="burst burst-red">Opa!</div></div>
+    <p>O ComicStream precisa do servidor PHP ligado.<br>Não abra o <code>index.html</code> direto.</p>
+    <ol>
+      <li>Feche esta aba.</li>
+      <li>Na pasta do projeto, dê dois cliques em <b>iniciar.bat</b>.</li>
+      <li>O navegador abre sozinho em <b>http://localhost:8080</b>.</li>
+    </ol>
+  </div>
+</div>
+<script>if(location.protocol==='file:'){document.getElementById('boot-warn').hidden=false;}</script>
+
+<script src="assets/vendor/pdfjs/pdf.min.js"></script>
+<script src="assets/vendor/page-flip/page-flip.browser.js"></script>
+<script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

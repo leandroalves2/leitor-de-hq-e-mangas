@@ -1,0 +1,116 @@
+import { parseDriveLink, parseFolderHtml, parseFileTitle, parseConfirmForm, downloadUrl, folderUrl, viewUrl } from './drive-common.js';
+
+export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
+  const jobs = [];
+  let seq = 0;
+
+  const snapshot = (job) => {
+    const { cancelled, ...rest } = job;
+    return rest;
+  };
+
+  async function listFolder(id, rel, depth, out, job) {
+    const res = await fs.httpGet(folderUrl(id));
+    if (res.status >= 400) throw new Error(`O Google Drive respondeu ${res.status}. A pasta está compartilhada como "qualquer pessoa com o link"?`);
+    const { title, items } = parseFolderHtml(res.text);
+    if (depth === 0 && title) job.title = title;
+    for (const item of items) {
+      if (job.cancelled) return;
+      if (item.folder) {
+        if (depth < 4) await listFolder(item.id, rel ? `${rel}/${item.name}` : item.name, depth + 1, out, job);
+      } else if (kindOf(item.name)) {
+        out.push({ id: item.id, name: item.name, rel });
+      } else {
+        job.skipped++;
+      }
+    }
+  }
+
+  async function sizeOf(path) {
+    const i = path.lastIndexOf('/');
+    const name = path.slice(i + 1);
+    const entry = (await fs.list(path.slice(0, i))).find((e) => e.name === name);
+    return entry ? entry.size : 0;
+  }
+
+  async function looksLikeHtml(path) {
+    if ((await sizeOf(path)) > 400000) return null;
+    const text = await fs.readText(path);
+    return text && /^\s*<(!doctype|html)/i.test(text.slice(0, 200)) ? text : null;
+  }
+
+  async function fetchFile(job, item, dest) {
+    const tmp = `${dest}.part`;
+    const onProgress = (bytes) => { job.bytes = job.base + bytes; job.current = item.name; };
+    await fs.download(downloadUrl(item.id), tmp, onProgress);
+    const html = await looksLikeHtml(tmp);
+    if (html) {
+      const retry = parseConfirmForm(html);
+      await fs.remove(tmp, false);
+      if (!retry) throw new Error(`${item.name}: o Drive bloqueou o download (limite de cota ou arquivo privado)`);
+      await fs.download(retry, tmp, onProgress);
+      if (await looksLikeHtml(tmp)) {
+        await fs.remove(tmp, false);
+        throw new Error(`${item.name}: o Drive bloqueou o download`);
+      }
+    }
+    await fs.remove(dest, false);
+    await fs.rename(tmp, dest);
+  }
+
+  async function run(job, spec) {
+    try {
+      const list = [];
+      if (spec.type === 'folder') {
+        await listFolder(spec.id, '', 0, list, job);
+      } else {
+        const page = await fs.httpGet(viewUrl(spec.id));
+        const name = parseFileTitle(page.text) || `arquivo-${spec.id}.pdf`;
+        job.title = name;
+        if (kindOf(name)) list.push({ id: spec.id, name, rel: '' });
+        else job.skipped++;
+      }
+      const base = spec.type === 'folder' ? `${LIB}/Downloads/${sanitizePath(job.title || 'Google Drive') || 'Google Drive'}` : `${LIB}/Downloads`;
+      job.files = list.length;
+      job.status = 'downloading';
+      for (const item of list) {
+        if (job.cancelled) break;
+        const rel = sanitizePath(item.rel ? `${item.rel}/${item.name}` : item.name);
+        const dest = `${base}/${rel}`;
+        if (await fs.exists(dest)) { job.done++; continue; }
+        job.base = job.bytes;
+        try {
+          await fetchFile(job, item, dest);
+          job.done++;
+        } catch (e) {
+          job.errors.push(e.message || String(e));
+        }
+      }
+      job.status = job.cancelled ? 'cancelled' : job.files === 0 ? 'empty' : 'done';
+    } catch (e) {
+      job.status = 'error';
+      job.errors.push(e.message || String(e));
+    }
+    job.current = '';
+    job.finished = Date.now();
+  }
+
+  return {
+    jobs: () => jobs.slice(-10).reverse().map(snapshot),
+
+    start(body) {
+      const spec = parseDriveLink(body.link);
+      if (!spec) throw new Error('Link do Google Drive inválido');
+      const job = { id: `j${Date.now()}${++seq}`, source: 'public', title: '', status: 'listing', files: 0, done: 0, skipped: 0, bytes: 0, base: 0, current: '', errors: [], started: Date.now(), cancelled: false };
+      jobs.push(job);
+      run(job, spec);
+      return snapshot(job);
+    },
+
+    cancel(id) {
+      const job = jobs.find((j) => j.id === id);
+      if (job) job.cancelled = true;
+      return { ok: true };
+    }
+  };
+}

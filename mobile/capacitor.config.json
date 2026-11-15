@@ -1,0 +1,11 @@
+{
+  "appId": "com.comicstream.app",
+  "appName": "ComicStream",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#fff4d6"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
