@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#ffd60a">
 <title>ComicStream</title>
 <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
@@ -262,6 +262,25 @@
   <div class="up-head"><strong id="up-title">Enviando...</strong><button class="btn icon sm" id="up-cancel" title="Cancelar"><svg class="ic"><use href="#i-x"/></svg></button></div>
   <small id="up-file"></small>
   <div class="load-bar"><i id="up-bar"></i></div>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="Navegação">
+  <a class="tab on" id="tab-home" href="#/"><svg class="ic"><use href="#i-home"/></svg><span>Estante</span></a>
+  <button class="tab" id="tab-drive" type="button"><svg class="ic"><use href="#i-cloud"/></svg><span>Drive</span><b class="tab-badge" id="tab-badge" hidden>0</b></button>
+  <button class="tab tab-main" id="tab-add" type="button"><span class="tab-plus"><svg class="ic"><use href="#i-plus"/></svg></span><span>Enviar</span></button>
+  <a class="tab" id="tab-stats" href="#/stats"><svg class="ic"><use href="#i-trophy"/></svg><span>Conquistas</span></a>
+  <button class="tab" id="tab-more" type="button"><svg class="ic"><use href="#i-gear"/></svg><span>Mais</span></button>
+</nav>
+
+<div class="sheet" id="more-modal" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head"><h3 class="caption">Mais</h3><button class="btn icon sm" data-close title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="more-list">
+      <button class="more-item" type="button" data-more="refresh"><svg class="ic"><use href="#i-refresh"/></svg>Atualizar estante</button>
+      <button class="more-item" type="button" data-more="settings"><svg class="ic"><use href="#i-gear"/></svg>Configurações</button>
+      <button class="more-item" type="button" data-more="theme"><svg class="ic"><use href="#i-moon"/></svg>Trocar tema claro e escuro</button>
+    </div>
+  </div>
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>

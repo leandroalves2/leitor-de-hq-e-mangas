@@ -1,4 +1,4 @@
-const VERSION = 'comicstream-v4';
+const VERSION = 'comicstream-v5';
 const SHELL = [
   './',
   'index.html',
@@ -7,6 +7,7 @@ const SHELL = [
   'assets/js/app.js',
   'assets/js/api.js',
   'assets/js/library.js',
+  'assets/js/mobile.js',
   'assets/js/panels.js',
   'assets/js/reader.js',
   'assets/js/sources.js',

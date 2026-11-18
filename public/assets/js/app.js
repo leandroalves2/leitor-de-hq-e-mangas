@@ -6,6 +6,7 @@ import { renderLibrary, renderSkeleton, initLibraryActions } from './library.js'
 import { renderStats } from './stats.js';
 import { initReader, openReader, closeReader, readerIsOpen, readerPath } from './reader.js';
 import { initUpload, pickFiles } from './upload.js';
+import { initMobile } from './mobile.js';
 import { $, prefs, toast, folderHash, parentOf, debounce, isTyping } from './util.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/vendor/pdfjs/pdf.worker.min.js';
@@ -231,6 +232,7 @@ async function boot() {
   initPwa();
   initLibraryActions();
   initDrive();
+  initMobile();
   initSettings();
   initReader();
   initUpload(() => refresh(false));
