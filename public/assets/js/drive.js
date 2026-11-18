@@ -76,7 +76,9 @@ function jobLine(job) {
   const analyzing = ['analyzing', 'listing', 'awaiting'].includes(job.status);
   if (job.files && !analyzing) info.push(`${job.done}/${job.files} arquivos`);
   if (job.bytes) info.push(fmtSize(job.bytes));
+  if (job.folders) info.push(`${job.folders} ${job.folders === 1 ? 'pasta lida' : 'pastas lidas'}`);
   if (job.skipped) info.push(`${job.skipped} ignorados`);
+  const ign = Object.entries(job.ignored || {}).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} (${v})`).join(' · ');
   const head = job.analyzed && job.files ? `<small class="job-sum"><b>${esc(summary(job))}</b>${job.status === 'downloading' ? ` · faltam ~${esc(fmtEta(job.eta))}` : ''}</small>` : '';
   return `<div class="job job-${esc(job.status)}">
     <div class="job-head"><strong title="${esc(job.title)}">${esc(job.title || 'Google Drive')}</strong><span class="job-status">${esc(STATUS[job.status] || job.status)}</span>
@@ -85,6 +87,7 @@ function jobLine(job) {
     ${job.status === 'awaiting' ? confirmBox(job) : ''}
     <div class="load-bar${active && (!job.files || analyzing) ? ' indeterminate' : ''}"><i style="width:${active ? pct : 100}%"></i></div>
     <small>${esc(info.join(' · '))}${job.current ? ` · ${esc(job.current)}` : ''}</small>
+    ${ign ? `<small class="job-ign">Ignorados por formato: ${esc(ign)}</small>` : ''}
     ${job.errors && job.errors.length ? `<small class="job-err">${esc(job.errors.slice(0, 2).join(' • '))}</small>` : ''}
   </div>`;
 }

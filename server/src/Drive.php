@@ -79,7 +79,7 @@ final class Drive
             }
             $next = [];
             $fatal = null;
-            Net::multi($queue, 8, static function (array $req, array $res) use (&$out, &$job, &$next, &$fatal, &$folders, $depth, $tick): ?array {
+            Net::multi($queue, 4, static function (array $req, array $res) use (&$out, &$job, &$next, &$fatal, &$folders, $depth, $tick): ?array {
                 $folders++;
                 if ($res['error'] !== '' || $res['status'] >= 400) {
                     $message = $res['error'] !== '' ? $res['error'] : 'O Google Drive respondeu ' . $res['status'] . '. A pasta está compartilhada como "qualquer pessoa com o link"?';
@@ -91,6 +91,10 @@ final class Drive
                     return null;
                 }
                 $parsed = self::parseFolderHtml((string) $res['body']);
+                if (!$parsed['items'] && ($req['tries'] ?? 0) < 2) {
+                    usleep(400000);
+                    return ['tries' => ($req['tries'] ?? 0) + 1] + $req;
+                }
                 if ($depth === 0 && $parsed['title'] !== '') {
                     $job['title'] = $parsed['title'];
                 }
@@ -103,10 +107,11 @@ final class Drive
                     } elseif (self::supported($item['name'])) {
                         $out[] = ['id' => $item['id'], 'name' => $item['name'], 'rel' => $req['rel'], 'source' => 'public', 'size' => 0];
                     } else {
-                        $job['skipped']++;
+                        self::noteIgnored($job, $item['name']);
                     }
                 }
                 $job['files'] = count($out);
+                $job['folders'] = $folders;
                 $tick($folders);
                 return null;
             });
@@ -116,6 +121,16 @@ final class Drive
             $level = $next;
         }
         usort($out, static fn(array $a, array $b): int => strnatcasecmp($a['rel'] . '/' . $a['name'], $b['rel'] . '/' . $b['name']));
+    }
+
+    private static function noteIgnored(array &$job, string $name): void
+    {
+        $job['skipped']++;
+        $ext = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+        $key = $ext === '' || strlen($ext) > 6 ? 'sem extensão' : '.' . $ext;
+        $job['ignored'][$key] = ($job['ignored'][$key] ?? 0) + 1;
+        arsort($job['ignored']);
+        $job['ignored'] = array_slice($job['ignored'], 0, 8, true);
     }
 
     private static function itemRequest(array $item, ?string $token): array
@@ -343,6 +358,8 @@ final class Drive
             'files' => 0,
             'done' => 0,
             'skipped' => 0,
+            'ignored' => new stdClass(),
+            'folders' => 0,
             'bytes' => 0,
             'already' => 0,
             'analyzed' => false,

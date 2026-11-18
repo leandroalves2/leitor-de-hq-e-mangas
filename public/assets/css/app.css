@@ -691,7 +691,7 @@ a.crumb:hover { transform: translate(-1px, -2px) rotate(-1deg); background: var(
   --line: #000;
 }
 
-.r-stage { position: absolute; inset: 0; overflow: hidden; outline: none; overscroll-behavior: contain; }
+.r-stage { position: absolute; inset: 0; overflow: hidden; outline: none; overscroll-behavior: contain; touch-action: pan-x pan-y; }
 .r-stage.mode-single { overflow: auto; }
 .r-stage.mode-scroll { overflow: auto; }
 .r-stage.mode-book { overflow: auto; }
@@ -1286,6 +1286,7 @@ body.dragging-card .card.collection, body.dragging-card .new-col { outline: 3px 
 .job-error .job-status, .job-err { color: var(--red); }
 .job small { font-weight: 700; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-err { font-weight: 800; font-size: .8rem; white-space: normal !important; }
+.job .job-ign { white-space: normal; }
 .job-done .load-bar i { background: var(--green); animation: none; }
 .steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-weight: 700; line-height: 1.45; }
 .g-form { display: grid; gap: 10px; }

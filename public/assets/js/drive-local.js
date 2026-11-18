@@ -9,10 +9,36 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
     return rest;
   };
 
+  let slots = 4;
+  const waiting = [];
+  const acquire = () => (slots > 0 ? (slots--, Promise.resolve()) : new Promise((resolve) => waiting.push(resolve)));
+  const release = () => {
+    const next = waiting.shift();
+    if (next) next();
+    else slots++;
+  };
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function fetchFolder(id) {
+    let parsed = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await acquire();
+      let res;
+      try {
+        res = await fs.httpGet(folderUrl(id));
+      } finally {
+        release();
+      }
+      if (res.status >= 400) throw new Error(`O Google Drive respondeu ${res.status}. A pasta está compartilhada como "qualquer pessoa com o link"?`);
+      parsed = parseFolderHtml(res.text);
+      if (parsed.items.length) break;
+      await sleep(500 * (attempt + 1));
+    }
+    return parsed;
+  }
+
   async function listFolder(id, rel, depth, out, job) {
-    const res = await fs.httpGet(folderUrl(id));
-    if (res.status >= 400) throw new Error(`O Google Drive respondeu ${res.status}. A pasta está compartilhada como "qualquer pessoa com o link"?`);
-    const { title, items } = parseFolderHtml(res.text);
+    const { title, items } = await fetchFolder(id);
     if (depth === 0 && title) job.title = title;
     const subs = [];
     for (const item of items) {
@@ -24,8 +50,12 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
         job.files = out.length;
       } else {
         job.skipped++;
+        const dot = item.name.lastIndexOf('.');
+        const ext = dot > 0 && item.name.length - dot <= 7 ? item.name.slice(dot).toLowerCase() : 'sem extensão';
+        job.ignored[ext] = (job.ignored[ext] || 0) + 1;
       }
     }
+    job.folders++;
     await Promise.all(subs);
   }
 
@@ -120,7 +150,7 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
     start(body) {
       const spec = parseDriveLink(body.link);
       if (!spec) throw new Error('Link do Google Drive inválido');
-      const job = { id: `j${Date.now()}${++seq}`, source: 'public', title: '', status: 'listing', files: 0, done: 0, skipped: 0, bytes: 0, base: 0, already: 0, analyzed: false, totalBytes: 0, estimated: false, eta: null, current: '', errors: [], started: Date.now(), cancelled: false };
+      const job = { id: `j${Date.now()}${++seq}`, source: 'public', title: '', status: 'listing', files: 0, done: 0, skipped: 0, ignored: {}, folders: 0, bytes: 0, base: 0, already: 0, analyzed: false, totalBytes: 0, estimated: false, eta: null, current: '', errors: [], started: Date.now(), cancelled: false };
       jobs.push(job);
       run(job, spec);
       return snapshot(job);

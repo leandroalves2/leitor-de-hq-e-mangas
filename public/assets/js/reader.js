@@ -35,6 +35,8 @@ const R = {
   drag: null,
   dragMoved: false,
   touch: null,
+  pinch: null,
+  chipTimer: 0,
   wheelAcc: 0,
   wheelAt: 0,
   wheelFlip: 0,
@@ -1264,14 +1266,51 @@ function bind() {
     if (x >= 0.3 && x <= 0.7) setZoom(R.zoom > 1.05 ? 1 : 2, { x: e.clientX, y: e.clientY });
   });
 
+  const fingerGap = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  const endPinch = (e) => {
+    if (!R.pinch || e.touches.length >= 2) return;
+    cancelAnimationFrame(R.pinch.raf || 0);
+    R.pinch = null;
+    R.dragMoved = true;
+    setTimeout(() => { R.dragMoved = false; }, 350);
+  };
+  const showZoomChip = () => {
+    const chip = $('#r-chip');
+    chip.hidden = false;
+    chip.textContent = `Zoom ${Math.round(R.zoom * 100)}%`;
+    clearTimeout(R.chipTimer);
+    R.chipTimer = setTimeout(() => { chip.hidden = true; }, 800);
+  };
+
   stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      R.touch = null;
+      R.pinch = { d0: Math.max(fingerGap(e.touches[0], e.touches[1]), 1), z0: R.zoom, raf: 0, next: null };
+      return;
+    }
     if (e.touches.length !== 1) { R.touch = null; return; }
     const t = e.touches[0];
     R.touch = { x: t.clientX, y: t.clientY, at: Date.now() };
   }, { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    const p = R.pinch;
+    if (!p || e.touches.length !== 2) return;
+    if (e.cancelable) e.preventDefault();
+    const a = e.touches[0];
+    const b = e.touches[1];
+    p.next = { z: p.z0 * (fingerGap(a, b) / p.d0), x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    if (p.raf) return;
+    p.raf = requestAnimationFrame(() => {
+      p.raf = 0;
+      if (R.pinch !== p || !p.next) return;
+      setZoom(Math.max(1, p.next.z), { x: p.next.x, y: p.next.y });
+      showZoomChip();
+    });
+  }, { passive: false });
   stage.addEventListener('touchend', (e) => {
     const t0 = R.touch;
     R.touch = null;
+    endPinch(e);
     if (!t0 || R.mode !== 'single') return;
     const t = e.changedTouches[0];
     const dx = t.clientX - t0.x;
@@ -1280,6 +1319,7 @@ function bind() {
       visual(dx < 0 ? 'right' : 'left');
     }
   }, { passive: true });
+  stage.addEventListener('touchcancel', (e) => { R.touch = null; endPinch(e); }, { passive: true });
 
   stage.addEventListener('wheel', (e) => {
     const dy = e.deltaY * (e.deltaMode === 1 ? 40 : 1);
