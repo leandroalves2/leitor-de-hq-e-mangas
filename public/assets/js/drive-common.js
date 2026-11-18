@@ -54,3 +54,23 @@ export function parseConfirmForm(html) {
 export const downloadUrl = (id) => `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`;
 export const folderUrl = (id) => `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(id)}`;
 export const viewUrl = (id) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
+
+export const hasRealExt = (name) => /\.[A-Za-z][A-Za-z0-9]{1,4}$/.test(name);
+
+const MAGIC = [['%PDF', 'pdf'], ['PK\x03\x04', 'cbz'], ['Rar!', 'cbr'], ['7z\xBC\xAF', 'cb7'], ['\xFF\xD8\xFF', 'jpg'], ['\x89PNG', 'png']];
+
+export function sniffExt(res, kindOf) {
+  const type = (res.headers['content-type'] || '').toLowerCase();
+  if (type.includes('text/html')) return null;
+  let bin = '';
+  try { bin = atob(String(res.data || '').slice(0, 24)); } catch {}
+  for (const [sig, ext] of MAGIC) if (bin.startsWith(sig)) return ext;
+  if (bin.startsWith('RIFF') && bin.slice(8, 12) === 'WEBP') return 'webp';
+  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(res.headers['content-disposition'] || '');
+  if (m) {
+    let n = m[1];
+    try { n = decodeURIComponent(n); } catch {}
+    if (kindOf(n)) return n.slice(n.lastIndexOf('.') + 1).toLowerCase();
+  }
+  return type.includes('application/pdf') ? 'pdf' : null;
+}

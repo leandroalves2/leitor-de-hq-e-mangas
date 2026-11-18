@@ -111,6 +111,11 @@ export async function createCapacitorAdapter() {
       return { status: res.status, headers: lowerHeaders(res.headers), text: typeof res.data === 'string' ? res.data : JSON.stringify(res.data), url: res.url || url };
     },
 
+    async httpProbe(url) {
+      const res = await CapacitorHttp.request({ url, method: 'GET', responseType: 'arraybuffer', headers: { 'User-Agent': 'Mozilla/5.0 ComicStream', Range: 'bytes=0-15' } });
+      return { status: res.status, headers: lowerHeaders(res.headers), data: typeof res.data === 'string' ? res.data : '' };
+    },
+
     async httpJson(url, headers = {}) {
       const res = await CapacitorHttp.request({ url, method: 'GET', headers });
       return { status: res.status, data: typeof res.data === 'string' ? JSON.parse(res.data || 'null') : res.data };

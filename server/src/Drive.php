@@ -106,6 +106,8 @@ final class Drive
                         }
                     } elseif (self::supported($item['name'])) {
                         $out[] = ['id' => $item['id'], 'name' => $item['name'], 'rel' => $req['rel'], 'source' => 'public', 'size' => 0];
+                    } elseif (self::guessable($item['name'])) {
+                        $out[] = ['id' => $item['id'], 'name' => $item['name'], 'rel' => $req['rel'], 'source' => 'public', 'size' => 0, 'guess' => true];
                     } else {
                         self::noteIgnored($job, $item['name']);
                     }
@@ -121,6 +123,45 @@ final class Drive
             $level = $next;
         }
         usort($out, static fn(array $a, array $b): int => strnatcasecmp($a['rel'] . '/' . $a['name'], $b['rel'] . '/' . $b['name']));
+    }
+
+    private static function guessable(string $name): bool
+    {
+        return $name !== '' && !preg_match('/\.[A-Za-z][A-Za-z0-9]{1,4}$/', $name);
+    }
+
+    private static function sniffExtension(string $file, array $headers): ?string
+    {
+        $head = (string) @file_get_contents($file, false, null, 0, 16);
+        if (str_starts_with($head, '%PDF')) {
+            return 'pdf';
+        }
+        if (str_starts_with($head, "PK\x03\x04")) {
+            return 'cbz';
+        }
+        if (str_starts_with($head, 'Rar!')) {
+            return 'cbr';
+        }
+        if (str_starts_with($head, "7z\xBC\xAF")) {
+            return 'cb7';
+        }
+        if (str_starts_with($head, "\xFF\xD8\xFF")) {
+            return 'jpg';
+        }
+        if (str_starts_with($head, "\x89PNG")) {
+            return 'png';
+        }
+        if (str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WEBP') {
+            return 'webp';
+        }
+        $disp = self::filenameFrom($headers['content-disposition'] ?? '');
+        if ($disp !== '' && self::supported($disp)) {
+            return strtolower((string) pathinfo($disp, PATHINFO_EXTENSION));
+        }
+        if (str_contains($headers['content-type'] ?? '', 'application/pdf')) {
+            return 'pdf';
+        }
+        return null;
     }
 
     private static function noteIgnored(array &$job, string $name): void
@@ -587,6 +628,14 @@ final class Drive
     {
         $dir = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, Paths::sanitizeUpload($base . '/' . $item['rel']));
         $target = $dir . DIRECTORY_SEPARATOR . Paths::sanitizeUpload($item['name']);
+        if (!empty($item['guess'])) {
+            foreach (['pdf', 'cbz', 'cbr', 'cb7', 'zip', 'rar', '7z', 'jpg', 'png', 'webp'] as $ext) {
+                if (is_file($target . '.' . $ext) && filesize($target . '.' . $ext) > 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
         return is_file($target) && filesize($target) > 0;
     }
 
@@ -670,6 +719,15 @@ final class Drive
                     $job['skipped']++;
                     return null;
                 }
+            }
+            if (!empty($item['guess'])) {
+                $ext = self::sniffExtension($tmp, $res['headers']);
+                if ($ext === null) {
+                    @unlink($tmp);
+                    self::noteIgnored($job, $item['name']);
+                    return null;
+                }
+                $name .= '.' . $ext;
             }
             $target = $req['dir'] . DIRECTORY_SEPARATOR . Paths::sanitizeUpload($name);
             @unlink($target);

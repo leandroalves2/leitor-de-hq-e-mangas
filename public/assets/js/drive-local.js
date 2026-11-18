@@ -1,4 +1,4 @@
-import { parseDriveLink, parseFolderHtml, parseFileTitle, parseConfirmForm, downloadUrl, folderUrl, viewUrl } from './drive-common.js';
+import { parseDriveLink, parseFolderHtml, parseFileTitle, parseConfirmForm, downloadUrl, folderUrl, viewUrl, hasRealExt, sniffExt } from './drive-common.js';
 
 export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
   const jobs = [];
@@ -47,6 +47,9 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
         if (depth < 4) subs.push(listFolder(item.id, rel ? `${rel}/${item.name}` : item.name, depth + 1, out, job));
       } else if (kindOf(item.name)) {
         out.push({ id: item.id, name: item.name, rel });
+        job.files = out.length;
+      } else if (!hasRealExt(item.name)) {
+        out.push({ id: item.id, name: item.name, rel, guess: true });
         job.files = out.length;
       } else {
         job.skipped++;
@@ -107,10 +110,17 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
       const base = spec.type === 'folder' ? `${LIB}/Downloads/${sanitizePath(job.title || 'Google Drive') || 'Google Drive'}` : `${LIB}/Downloads`;
       job.files = list.length;
       const pending = [];
+      const GUESS = ['pdf', 'cbz', 'cbr', 'cb7', 'zip', 'rar', '7z', 'jpg', 'png', 'webp'];
       for (const item of list) {
         const rel = sanitizePath(item.rel ? `${item.rel}/${item.name}` : item.name);
         const dest = `${base}/${rel}`;
-        if (await fs.exists(dest)) job.done++;
+        let found = false;
+        if (item.guess) {
+          for (const ext of GUESS) if (await fs.exists(`${dest}.${ext}`)) { found = true; break; }
+        } else {
+          found = await fs.exists(dest);
+        }
+        if (found) job.done++;
         else pending.push({ item, dest });
       }
       job.already = job.done;
@@ -125,8 +135,20 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
       for (const { item, dest } of pending) {
         if (job.cancelled) break;
         job.base = job.bytes;
+        let target = dest;
+        if (item.guess) {
+          let ext = null;
+          try { ext = sniffExt(await fs.httpProbe(downloadUrl(item.id)), kindOf); } catch {}
+          if (!ext) {
+            job.skipped++;
+            job.ignored['sem extensão'] = (job.ignored['sem extensão'] || 0) + 1;
+            job.files--;
+            continue;
+          }
+          target = `${dest}.${ext}`;
+        }
         try {
-          await fetchFile(job, item, dest);
+          await fetchFile(job, item, target);
           job.done++;
         } catch (e) {
           job.errors.push(e.message || String(e));
