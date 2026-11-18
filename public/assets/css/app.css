@@ -1418,4 +1418,10 @@ html[data-platform="android"] [data-pick="folder"] { display: none; }
   .r-bottom #r-modes button { padding: .4rem .8rem; }
   .act { width: 32px; height: 32px; }
   .browser-tools, .crumbs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .empty { min-width: 0; max-width: 100%; padding: 28px 8px; }
+  .empty h2 { font-size: 1.8rem; }
+  .empty p { max-width: 100%; }
+  .empty code { display: inline-block; max-width: 100%; white-space: normal; word-break: break-all; font-size: .8rem; }
+  .library, .browser, .shelf { min-width: 0; max-width: 100%; }
 }

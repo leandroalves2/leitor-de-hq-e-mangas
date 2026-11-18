@@ -3,7 +3,8 @@
   "appName": "ComicStream",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#fff4d6"
+    "backgroundColor": "#fff4d6",
+    "adjustMarginsForEdgeToEdge": "force"
   },
   "server": {
     "androidScheme": "https"
