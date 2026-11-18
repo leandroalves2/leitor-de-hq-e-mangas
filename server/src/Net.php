@@ -36,7 +36,9 @@ final class Net
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 10,
             CURLOPT_CONNECTTIMEOUT => 20,
-            CURLOPT_TIMEOUT => 0,
+            CURLOPT_TIMEOUT => $sink === null ? 90 : 0,
+            CURLOPT_LOW_SPEED_LIMIT => 1,
+            CURLOPT_LOW_SPEED_TIME => 60,
             CURLOPT_USERAGENT => self::UA,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_ENCODING => '',
@@ -84,6 +86,155 @@ final class Net
             throw new RuntimeException($error !== '' ? $error : 'Falha de rede');
         }
         return ['status' => $status, 'headers' => $responseHeaders, 'body' => $sink === null ? (string) $result : null, 'url' => $final];
+    }
+
+    public static function multi(array $queue, int $limit, callable $onDone, ?callable $onTick = null): void
+    {
+        $queue = array_values($queue);
+        if (!function_exists('curl_multi_init')) {
+            self::multiSequential($queue, $onDone, $onTick);
+            return;
+        }
+        $mh = curl_multi_init();
+        $running = [];
+        $fill = static function () use (&$queue, &$running, $mh, $limit): void {
+            while ($queue && count($running) < $limit) {
+                $req = array_shift($queue);
+                $state = (object) ['headers' => [], 'body' => '', 'fp' => null];
+                $ch = curl_init((string) $req['url']);
+                $options = [
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_CONNECTTIMEOUT => 20,
+                    CURLOPT_LOW_SPEED_LIMIT => 1,
+                    CURLOPT_LOW_SPEED_TIME => 60,
+                    CURLOPT_USERAGENT => self::UA,
+                    CURLOPT_HTTPHEADER => $req['headers'] ?? [],
+                    CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use ($state): int {
+                        if (preg_match('#^HTTP/\S+\s+\d+#', $line)) {
+                            $state->headers = [];
+                        } elseif (str_contains($line, ':')) {
+                            [$k, $v] = explode(':', $line, 2);
+                            $state->headers[strtolower(trim($k))] = trim($v);
+                        }
+                        return strlen($line);
+                    },
+                ];
+                $ca = self::caFile();
+                if ($ca !== null) {
+                    $options[CURLOPT_CAINFO] = $ca;
+                }
+                if (!empty($req['range'])) {
+                    $options[CURLOPT_RANGE] = $req['range'];
+                } else {
+                    $options[CURLOPT_ENCODING] = '';
+                }
+                if (!empty($req['sink'])) {
+                    $state->fp = fopen((string) $req['sink'], 'wb');
+                    if ($state->fp === false) {
+                        $state->fp = null;
+                        $options[CURLOPT_WRITEFUNCTION] = static fn($ch, string $data): int => 0;
+                    } else {
+                        $options[CURLOPT_FILE] = $state->fp;
+                    }
+                    $options[CURLOPT_TIMEOUT] = 0;
+                } elseif (!empty($req['discard'])) {
+                    $options[CURLOPT_WRITEFUNCTION] = static fn($ch, string $data): int => strlen($data);
+                    $options[CURLOPT_TIMEOUT] = 0;
+                } else {
+                    $cap = (int) ($req['cap'] ?? 0);
+                    $options[CURLOPT_TIMEOUT] = 90;
+                    $options[CURLOPT_WRITEFUNCTION] = static function ($ch, string $data) use ($state, $cap): int {
+                        $state->body .= $data;
+                        return ($cap > 0 && strlen($state->body) > $cap) ? 0 : strlen($data);
+                    };
+                }
+                curl_setopt_array($ch, $options);
+                curl_multi_add_handle($mh, $ch);
+                $running[spl_object_id($ch)] = ['req' => $req, 'ch' => $ch, 'state' => $state];
+            }
+        };
+        $fill();
+        while ($running) {
+            do {
+                $code = curl_multi_exec($mh, $still);
+            } while ($code === CURLM_CALL_MULTI_PERFORM);
+            if ($still > 0 && curl_multi_select($mh, 0.2) === -1) {
+                usleep(50000);
+            }
+            while ($info = curl_multi_info_read($mh)) {
+                $id = spl_object_id($info['handle']);
+                if (!isset($running[$id])) {
+                    continue;
+                }
+                $entry = $running[$id];
+                $ch = $entry['ch'];
+                $state = $entry['state'];
+                $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                $size = (int) curl_getinfo($ch, CURLINFO_SIZE_DOWNLOAD);
+                $error = $info['result'] !== CURLE_OK ? curl_error($ch) : '';
+                if ($error !== '' && $status > 0 && !empty($entry['req']['cap'])) {
+                    $error = '';
+                }
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+                if ($state->fp) {
+                    fclose($state->fp);
+                }
+                unset($running[$id]);
+                $more = $onDone($entry['req'], ['status' => $status, 'headers' => $state->headers, 'body' => $state->body, 'error' => $error, 'bytes' => $size]);
+                if (is_array($more)) {
+                    $queue[] = $more;
+                }
+            }
+            $fill();
+            if ($onTick !== null) {
+                $bytes = [];
+                foreach ($running as $entry) {
+                    $bytes[$entry['req']['key'] ?? spl_object_id($entry['ch'])] = (int) curl_getinfo($entry['ch'], CURLINFO_SIZE_DOWNLOAD);
+                }
+                if ($onTick($bytes) === false) {
+                    foreach ($running as $entry) {
+                        curl_multi_remove_handle($mh, $entry['ch']);
+                        curl_close($entry['ch']);
+                        if ($entry['state']->fp) {
+                            fclose($entry['state']->fp);
+                        }
+                    }
+                    $running = [];
+                    $queue = [];
+                }
+            }
+        }
+        curl_multi_close($mh);
+    }
+
+    private static function multiSequential(array $queue, callable $onDone, ?callable $onTick): void
+    {
+        while ($queue) {
+            $req = array_shift($queue);
+            if (!empty($req['discard'])) {
+                $onDone($req, ['status' => 0, 'headers' => [], 'body' => '', 'error' => 'sem curl', 'bytes' => 0]);
+                continue;
+            }
+            $headers = $req['headers'] ?? [];
+            if (!empty($req['range'])) {
+                $headers[] = 'Range: bytes=' . $req['range'];
+            }
+            try {
+                $res = self::stream('GET', (string) $req['url'], $headers, null, $req['sink'] ?? null, null);
+                $more = $onDone($req, ['status' => $res['status'], 'headers' => $res['headers'], 'body' => substr((string) ($res['body'] ?? ''), 0, 65536), 'error' => '', 'bytes' => 0]);
+            } catch (Throwable $e) {
+                $more = $onDone($req, ['status' => 0, 'headers' => [], 'body' => '', 'error' => $e->getMessage(), 'bytes' => 0]);
+            }
+            if (is_array($more)) {
+                $queue[] = $more;
+            }
+            if ($onTick !== null && $onTick([]) === false) {
+                return;
+            }
+        }
     }
 
     private static function stream(string $method, string $url, array $headers, ?string $body, ?string $sink, ?callable $progress): array

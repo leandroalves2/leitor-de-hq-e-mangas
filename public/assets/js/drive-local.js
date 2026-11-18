@@ -5,7 +5,7 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
   let seq = 0;
 
   const snapshot = (job) => {
-    const { cancelled, ...rest } = job;
+    const { cancelled, go, ...rest } = job;
     return rest;
   };
 
@@ -14,16 +14,19 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
     if (res.status >= 400) throw new Error(`O Google Drive respondeu ${res.status}. A pasta está compartilhada como "qualquer pessoa com o link"?`);
     const { title, items } = parseFolderHtml(res.text);
     if (depth === 0 && title) job.title = title;
+    const subs = [];
     for (const item of items) {
       if (job.cancelled) return;
       if (item.folder) {
-        if (depth < 4) await listFolder(item.id, rel ? `${rel}/${item.name}` : item.name, depth + 1, out, job);
+        if (depth < 4) subs.push(listFolder(item.id, rel ? `${rel}/${item.name}` : item.name, depth + 1, out, job));
       } else if (kindOf(item.name)) {
         out.push({ id: item.id, name: item.name, rel });
+        job.files = out.length;
       } else {
         job.skipped++;
       }
     }
+    await Promise.all(subs);
   }
 
   async function sizeOf(path) {
@@ -70,14 +73,27 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
         if (kindOf(name)) list.push({ id: spec.id, name, rel: '' });
         else job.skipped++;
       }
+      list.sort((a, b) => `${a.rel}/${a.name}`.localeCompare(`${b.rel}/${b.name}`, undefined, { numeric: true, sensitivity: 'base' }));
       const base = spec.type === 'folder' ? `${LIB}/Downloads/${sanitizePath(job.title || 'Google Drive') || 'Google Drive'}` : `${LIB}/Downloads`;
       job.files = list.length;
-      job.status = 'downloading';
+      const pending = [];
       for (const item of list) {
-        if (job.cancelled) break;
         const rel = sanitizePath(item.rel ? `${item.rel}/${item.name}` : item.name);
         const dest = `${base}/${rel}`;
-        if (await fs.exists(dest)) { job.done++; continue; }
+        if (await fs.exists(dest)) job.done++;
+        else pending.push({ item, dest });
+      }
+      job.already = job.done;
+      job.analyzed = true;
+      if (pending.length && !job.cancelled) {
+        job.status = 'awaiting';
+        await new Promise((resolve) => { job.go = resolve; });
+      }
+      job.status = 'downloading';
+      const began = Date.now();
+      let finished = 0;
+      for (const { item, dest } of pending) {
+        if (job.cancelled) break;
         job.base = job.bytes;
         try {
           await fetchFile(job, item, dest);
@@ -85,7 +101,10 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
         } catch (e) {
           job.errors.push(e.message || String(e));
         }
+        finished++;
+        job.eta = Math.round(((Date.now() - began) / finished) * (pending.length - finished) / 1000);
       }
+      job.eta = 0;
       job.status = job.cancelled ? 'cancelled' : job.files === 0 ? 'empty' : 'done';
     } catch (e) {
       job.status = 'error';
@@ -101,7 +120,7 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
     start(body) {
       const spec = parseDriveLink(body.link);
       if (!spec) throw new Error('Link do Google Drive inválido');
-      const job = { id: `j${Date.now()}${++seq}`, source: 'public', title: '', status: 'listing', files: 0, done: 0, skipped: 0, bytes: 0, base: 0, current: '', errors: [], started: Date.now(), cancelled: false };
+      const job = { id: `j${Date.now()}${++seq}`, source: 'public', title: '', status: 'listing', files: 0, done: 0, skipped: 0, bytes: 0, base: 0, already: 0, analyzed: false, totalBytes: 0, estimated: false, eta: null, current: '', errors: [], started: Date.now(), cancelled: false };
       jobs.push(job);
       run(job, spec);
       return snapshot(job);
@@ -109,7 +128,24 @@ export function createLocalDrive(fs, { LIB, kindOf, sanitizePath }) {
 
     cancel(id) {
       const job = jobs.find((j) => j.id === id);
-      if (job) job.cancelled = true;
+      if (job) {
+        job.cancelled = true;
+        if (job.go) job.go();
+      }
+      return { ok: true };
+    },
+
+    clear() {
+      const active = ['listing', 'analyzing', 'awaiting', 'downloading'];
+      for (let i = jobs.length - 1; i >= 0; i--) {
+        if (!active.includes(jobs[i].status)) jobs.splice(i, 1);
+      }
+      return { ok: true };
+    },
+
+    confirm(id) {
+      const job = jobs.find((j) => j.id === id);
+      if (job && job.go) job.go();
       return { ok: true };
     }
   };

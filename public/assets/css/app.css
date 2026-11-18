@@ -1279,6 +1279,7 @@ body.dragging-card .card.collection, body.dragging-card .new-col { outline: 3px 
 .drive-jobs .caption { justify-self: start; font-size: 1.2rem; }
 .job { display: grid; gap: 6px; padding: 10px 12px; background: var(--panel-2); border: 2px solid var(--line); border-radius: 8px; }
 .job-head { display: flex; align-items: center; gap: 10px; }
+.job-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .job-head strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-status { font-family: var(--display); letter-spacing: .04em; color: var(--blue); }
 .job-done .job-status { color: #0e9f53; }

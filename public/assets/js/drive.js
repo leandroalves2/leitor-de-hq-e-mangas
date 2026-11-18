@@ -2,10 +2,13 @@ import { api, platform } from './api.js';
 import { $, $$, esc, fmtSize, toast } from './util.js';
 import { pickFiles } from './upload.js';
 
-const ACTIVE = ['queued', 'listing', 'downloading'];
+const ACTIVE = ['queued', 'listing', 'analyzing', 'awaiting', 'downloading'];
+const announced = new Set();
 const STATUS = {
   queued: 'Na fila',
   listing: 'Lendo a pasta...',
+  analyzing: 'Analisando...',
+  awaiting: 'Aguardando você',
   downloading: 'Baixando',
   done: 'Concluído',
   empty: 'Nenhuma HQ encontrada',
@@ -40,17 +43,47 @@ function closeDrive() {
   clearInterval(loginPoll);
 }
 
+function fmtEta(seconds) {
+  if (seconds == null) return 'calculando...';
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 5) return 'poucos segundos';
+  if (s < 60) return `${s} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h} h ${String(m % 60).padStart(2, '0')} min`;
+}
+
+function summary(job) {
+  const news = job.files - (job.already || 0);
+  const parts = [`${job.files} ${job.files === 1 ? 'HQ' : 'HQs'}`];
+  if (job.already) parts.push(`${job.already} já na biblioteca`);
+  if (news > 0 && job.totalBytes) parts.push(`${job.estimated ? '~' : ''}${fmtSize(job.totalBytes)} a baixar`);
+  return parts.join(' · ');
+}
+
+function confirmBox(job) {
+  const eta = job.totalBytes && job.eta != null ? ` Tempo estimado: ~${fmtEta(job.eta)}.` : '';
+  const news = job.files - (job.already || 0);
+  return `<p class="hint">Encontrei <b>${news}</b> ${news === 1 ? 'HQ nova' : 'HQs novas'} para baixar.${esc(eta)} Quer começar?</p>
+    <div class="row-btns"><button class="btn btn-yellow sm" data-confirm="${esc(job.id)}">Baixar agora</button><button class="btn sm" data-cancel="${esc(job.id)}">Não baixar</button></div>`;
+}
+
 function jobLine(job) {
   const active = ACTIVE.includes(job.status);
   const pct = job.files ? Math.round((job.done / job.files) * 100) : 0;
   const info = [];
-  if (job.files) info.push(`${job.done}/${job.files} arquivos`);
+  const analyzing = ['analyzing', 'listing', 'awaiting'].includes(job.status);
+  if (job.files && !analyzing) info.push(`${job.done}/${job.files} arquivos`);
   if (job.bytes) info.push(fmtSize(job.bytes));
   if (job.skipped) info.push(`${job.skipped} ignorados`);
+  const head = job.analyzed && job.files ? `<small class="job-sum"><b>${esc(summary(job))}</b>${job.status === 'downloading' ? ` · faltam ~${esc(fmtEta(job.eta))}` : ''}</small>` : '';
   return `<div class="job job-${esc(job.status)}">
     <div class="job-head"><strong title="${esc(job.title)}">${esc(job.title || 'Google Drive')}</strong><span class="job-status">${esc(STATUS[job.status] || job.status)}</span>
       ${active ? `<button class="btn icon sm" data-cancel="${esc(job.id)}" title="Cancelar"><svg class="ic"><use href="#i-x"/></svg></button>` : ''}</div>
-    <div class="load-bar${active && !job.files ? ' indeterminate' : ''}"><i style="width:${active ? pct : 100}%"></i></div>
+    ${head}
+    ${job.status === 'awaiting' ? confirmBox(job) : ''}
+    <div class="load-bar${active && (!job.files || analyzing) ? ' indeterminate' : ''}"><i style="width:${active ? pct : 100}%"></i></div>
     <small>${esc(info.join(' · '))}${job.current ? ` · ${esc(job.current)}` : ''}</small>
     ${job.errors && job.errors.length ? `<small class="job-err">${esc(job.errors.slice(0, 2).join(' • '))}</small>` : ''}
   </div>`;
@@ -72,6 +105,11 @@ async function poll() {
       if (job.status === 'done') toast(`Download concluído: ${job.done} ${job.done === 1 ? 'HQ' : 'HQs'} em Downloads`, 'ok', 4000);
       else if (job.status === 'error') toast(`Erro no download: ${(job.errors || [])[0] || ''}`, 'err', 6000);
     }
+    if (job.analyzed && job.files && ['awaiting', 'downloading'].includes(job.status) && !announced.has(job.id)) {
+      announced.add(job.id);
+      const eta = job.totalBytes && job.eta != null ? ` · tempo estimado ~${fmtEta(job.eta)}` : '';
+      toast(`${summary(job)}${eta}`, 'ok', 8000);
+    }
     lastStatus.set(job.id, job.status);
   }
   if (finished) window.dispatchEvent(new CustomEvent('cs:reload'));
@@ -80,7 +118,7 @@ async function poll() {
   badge.hidden = !active;
   badge.textContent = String(active);
   $('#drive-jobs').innerHTML = jobs.length
-    ? `<h4 class="caption caption-blue">Downloads</h4>${jobs.map(jobLine).join('')}`
+    ? `<div class="job-title"><h4 class="caption caption-blue">Downloads</h4>${jobs.some((j) => !ACTIVE.includes(j.status)) ? '<button class="btn sm" data-clear>Limpar lista</button>' : ''}</div>${jobs.map(jobLine).join('')}`
     : '';
   if (active || !modal().hidden) timer = setTimeout(poll, active ? 1200 : 4000);
 }
@@ -88,7 +126,7 @@ async function poll() {
 async function startDownload(body) {
   try {
     await api.postJson('drive-download', body);
-    toast('Download iniciado! Ele continua mesmo se você fechar esta janela.', 'ok', 3000);
+    toast('Analisando a pasta... em instantes eu mostro quantas HQs são e o tempo.', 'info', 3500);
     poll();
   } catch (e) {
     toast(e.message, 'err', 6000);
@@ -179,6 +217,9 @@ export function initDrive() {
     if (t === modal() || t.closest('[data-close]')) { closeDrive(); return; }
     const tab = t.closest('[data-tab]');
     if (tab) { setTab(tab.dataset.tab); return; }
+    if (t.closest('[data-clear]')) { await api.postJson('drive-clear', {}).catch(() => {}); lastStatus.clear(); poll(); return; }
+    const confirm = t.closest('[data-confirm]');
+    if (confirm) { await api.postJson('drive-confirm', { id: confirm.dataset.confirm }).catch(() => {}); poll(); return; }
     const cancel = t.closest('[data-cancel]');
     if (cancel) { await api.postJson('drive-cancel', { id: cancel.dataset.cancel }).catch(() => {}); poll(); return; }
     if (t.closest('[data-pick-drive]')) { closeDrive(); pickFiles('files'); return; }

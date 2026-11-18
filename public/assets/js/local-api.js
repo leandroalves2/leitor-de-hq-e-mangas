@@ -305,6 +305,8 @@ export async function createLocalApi(fs) {
         }
         case 'delete': return trash(String(body.path || ''));
         case 'drive-download': return drive.start(body);
+        case 'drive-confirm': return drive.confirm(String(body.id || ''));
+        case 'drive-clear': return drive.clear();
         case 'drive-cancel': return drive.cancel(String(body.id || ''));
         default: throw new Error('Rota inexistente');
       }

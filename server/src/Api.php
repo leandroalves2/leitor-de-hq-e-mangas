@@ -30,6 +30,8 @@ final class Api
                 $route === 'drive-list' && $get => Http::json(Drive::listAccount((string) ($_GET['folder'] ?? 'root'))),
                 $route === 'drive-download' && $method === 'POST' => Http::json(Drive::start(Http::readJson())),
                 $route === 'drive-jobs' && $get => Http::json(Drive::jobs()),
+                $route === 'drive-confirm' && $method === 'POST' => Http::json(Drive::confirm((string) (Http::readJson()['id'] ?? ''))),
+                $route === 'drive-clear' && $method === 'POST' => Http::json(Drive::clear()),
                 $route === 'drive-cancel' && $method === 'POST' => Http::json(Drive::cancel((string) (Http::readJson()['id'] ?? ''))),
                 $route === 'delete' && $method === 'POST' => Http::json(Extras::trash((string) (Http::readJson()['path'] ?? ''))),
                 $route === 'stats' && $method === 'POST' => Http::json(Extras::saveStats(Http::readJson())),
